@@ -1,0 +1,27 @@
+variable_name <- value
+hello_world <- c("hello","world")
+c("hello","world")
+sabrina_susu <- c("sabrina","susu")
+sabrina <- c("apple")
+sabrina_susu
+sabrina_susu <- c("sabrina", "banana")
+hello_world
+name <- c("Sabrina")
+age <- 21
+print(name, age)
+susu <- c("milk")
+print(susu)
+print(name)
+print(age, Eleonora, hello_world)
+print(age, name)
+print(name)
+c("name")
+print(c("My name is:", name, "and my age is:", age))
+print(name)
+print(age)
+print("name", "age")
+c(name, age)
+Biru <- c("blue")
+print(Biru)
+c(Biru)
+c(sabrina, Sabrina)
