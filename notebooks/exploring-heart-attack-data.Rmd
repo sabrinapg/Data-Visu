@@ -1,0 +1,144 @@
+---
+title: "Heart Attack Data Exploration"
+---
+
+```{r}
+# execute R code
+```
+
+
+```{r}
+# read the data
+heart_data <- read.csv("../data/heart_attack_data.csv", header=TRUE)
+```
+
+
+```{r}
+# in the Console - change "heart_attack_data" to "heart_data" by running this code
+# rm(heart_attack_data)
+# to get the name "heart_data" remove the first "attack" from this exact code
+# heart_attack_data <- read.csv("../data/heart_attack_data.csv", header=TRUE)
+# BUT ONLY IF YOU WANT TO CHANGE
+```
+
+
+```{r}
+# preview the data
+head(heart_data)
+
+# integers are numbers without decimals. double is a floating-point numbers with double precisions
+```
+
+
+```{r}
+# use the class function to get information about the type of variable
+class(heart_data)
+```
+
+
+```{r}
+# to check the shape of data (number of columns and code)
+dim(heart_data)
+```
+
+
+```{r}
+# to check the structure of the data (different data type of the DataFrame)
+str(heart_data)
+```
+
+
+```{r}
+# factorise data that has variables
+# the variables are sex, cp, fbs, restecg, exang, target
+heart_data$sex <- factor(heart_data$sex)
+heart_data$cp <- factor(heart_data$cp)
+heart_data$fbs <- factor(heart_data$fbs)
+heart_data$restecg <- factor(heart_data$restecg)
+heart_data$exang <- factor(heart_data$exang)
+heart_data$target <- factor(heart_data$target)
+```
+
+
+```{r}
+# check the structure again
+str(heart_data)
+```
+
+
+```{r}
+# 1 means they have cancer
+# 0 means they do not have cancer
+summary(heart_data)
+```
+
+
+```{r}
+# to check the specific targets
+summary(heart_data$age)
+```
+
+
+```{r}
+# to check the specific targets
+summary(heart_data$target)
+```
+
+
+```{r}
+# at the same time !! try not to be confused !!
+# 1 is male patient
+# 0 is a female patient
+
+table(heart_data$sex, heart_data$target)
+
+# row represents target
+# column represents sex
+
+# there are 12 females with cancer and 94 males with cancer
+```
+
+
+```{r}
+# tidying the table and storing as a variable
+gender_cancer_dist <- as.data.frame(table(heart_data$sex, heart_data$target))
+names(gender_cancer_dist) <- c("Gender", "Target", "Frequency")
+gender_cancer_dist
+```
+
+
+```{r}
+# code to replace 0 and 1 with Female and Male
+# we need to import the library once only
+library(dplyr)
+
+gender_cancer_dist <- gender_cancer_dist %>%
+  mutate(Gender = ifelse(Gender == 0, "Female", "Male"))
+
+gender_cancer_dist
+```
+
+
+```{r}
+# convert the 0s in target to no heart attack and 1st to heart attack
+# there was a slight error where all the Gender above would be "Male" only; but you can fix this by pressing the second button after the gear one
+
+gender_cancer_dist <- gender_cancer_dist %>%
+  mutate(Target = ifelse(Target == 0, "No Heart Attack", "Heart Attack"))
+
+gender_cancer_dist
+```
+
+
+```{r}
+# visualising the data
+# install.packages("tidyverse")
+# make sure to run library(tidyverse)
+
+ggplot(gender_cancer_dist, aes(x=Gender, y=Frequency, fill=Target)) + 
+  geom_col() + 
+  labs(title="Distribution of Patients with Heart Disease")
+
+# reference: https://rpubs.com/murraylax/viscrosstabs
+```
+
