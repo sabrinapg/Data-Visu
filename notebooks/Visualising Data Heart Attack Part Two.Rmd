@@ -1,0 +1,303 @@
+---
+title: "Visualising Heart Attack Data"
+# Sabrina's R Notebook for Intr. to Data Visualisation Class Lecture 6 <3
+---
+
+```{r}
+# Activity 1: Read the .csv file in your R notebook
+heart_data <- read.csv("../data/heart_attack_data.csv")
+# If: There is an error, restart R Studio
+```
+
+
+```{r}
+# Activity 2: Preview the first 6 rows of data
+head(heart_data)
+```
+
+
+```{r}
+# Activity 3: Check how many patients worth of data that we have
+dim(heart_data)
+# [1] row column
+# row represents patients = 294 patients
+# column represents variables = 14 variables
+```
+
+
+```{r}
+# Check the structure of the data
+str(heart_data)
+```
+
+
+```{r}
+# Activity 5: Factorize variables that have categories
+heart_data$sex <- factor(heart_data$sex)
+heart_data$cp <- factor(heart_data$cp)
+heart_data$fbs <- factor(heart_data$fbs)
+heart_data$restecg <- factor(heart_data$restecg)
+heart_data$exang <- factor(heart_data$exang)
+heart_data$target <- factor(heart_data$target)
+```
+
+
+```{r}
+# Activity 6: Check the new structure after variables have been categorized
+str(heart_data)
+```
+
+
+```{r}
+# Activate tidyverse, if you have already installed it
+library(tidyverse)
+```
+
+
+```{r}
+# Visualizing Data in R - The syntax
+
+# name_of_data_frame %>%
+#  ggplot(mapping = aes([MAPPING)]) + [GEOM_FUNCTION]()
+
+# To create a line graph with ggplot() + geom_line()
+# To create a scatter plot, ggplot() + geom_point()
+# To create a histogram, we use ggplot() + geom_histogram()
+# To create a bar chart, we use ggplot() + geom_bar()
+# To create a boxplot, we use ggplot() + geom_boxplot()
+
+```
+
+
+```{r}
+# Activity 7: Write an r code that will visualize the relationship between age and cholesterol in the form of a scatter plot
+heart_data %>%
+  ggplot(aes(x = age, y = chol)) +
+  geom_point(na.rm = TRUE) + 
+  ggtitle("Age vs Cholesterol")
+# Note: If ggplot does not work - check if you have activated tidyverse
+```
+
+
+```{r}
+# to remove the "warning" label, add "na.rm = TRUE" in geom_point()
+# na.rm represents remove the missing values from the input vector
+```
+
+
+```{r}
+# Activity 8: Write an r code that will visualize the relationship between cholesterol and maximum heart rate (thalach) in the form of a scatter plot
+heart_data %>%
+  ggplot(aes(x = chol, y = thalach)) +
+  geom_point(na.rm = TRUE) + 
+  ggtitle("Cholesterol vs Maximum Heart Rate")
+```
+
+
+```{r}
+# Activity 9: Write an r code that will visualize the relationship between age, cholesterol and gender in the form of a 2D scatter plot
+heart_data %>%
+  ggplot(aes (x = age, y = chol)) + 
+  geom_point(aes (colour = sex), na.rm = TRUE) + 
+  ggtitle("Age vs Cholesterol by Gender")
+# WHY IS THE COLOUR SWITCHED????
+```
+
+
+```{r}
+# Activity 9.1: Mutate the data to show the female and male
+# If you want to replace the 0 and 1 with female and male
+# Convert the 0s to map female and 1s to map male
+heart_data <- heart_data %>%
+  mutate(sex = ifelse(sex == 0, "Female", "Male"))
+
+unique(heart_data$sex)
+```
+
+
+
+```{r}
+# Activity 9.2: Check the new graph after mutation
+heart_data %>%
+  ggplot(aes (x = age, y = chol)) + 
+  geom_point(aes (colour = sex), na.rm = TRUE) + 
+  ggtitle("Age vs Cholesterol by Gender")
+```
+
+
+```{r}
+# Activity 10: Write an r code that will visualize the relationship between age, cholesterol and heart disease in the form of a 2D scatter plot
+heart_data %>%
+  ggplot(aes (x = age, y = chol)) + 
+  geom_point(aes (colour = target), na.rm = TRUE) + 
+  ggtitle("Relationship between age, cholesterol and heart disease")
+```
+
+
+```{r}
+# Activity 10.1: Mutate the data to show the no heart disease and heart disease
+# If you want to replace the 0 and 1 with no heart disease and heart disease
+# Convert the 0s to map no heart disease and 1s to map heart disease
+heart_data <- heart_data %>%
+  mutate(target = ifelse(target == 0, "No Heart Disease", "Heart Disease"))
+
+unique(heart_data$target)
+```
+
+
+```{r}
+# Activity 10.2: Check the data after mutation
+heart_data %>%
+  ggplot(aes (x = age, y = chol)) + 
+  geom_point(aes (colour = target), na.rm = TRUE) + 
+  ggtitle("Relationship between age, cholesterol and heart disease")
+```
+
+
+```{r}
+# Activity 11: Write an r code that shows the distribution of age in the form of a histogram
+heart_data %>%
+  ggplot(aes (x = age)) + 
+  geom_histogram() + 
+  ggtitle("Distribution of Age")
+```
+
+
+```{r}
+# NOTE: If your data starts looking strange, run the factorising code again!! 
+# You'll have to rerun all your codes to make it look decent or fix any problems!!
+```
+
+
+```{r}
+# Activity 12: Adjust the histogram bin width and colour
+heart_data %>%
+  ggplot(aes(x=age)) + 
+           geom_histogram(binwidth = 5, fill = "turquoise", color = "pink", alpha = 0.9) +
+           ggtitle("Histogram with bin size = 5") +
+           theme(plot.title = element_text(size=15))
+```
+
+
+```{r}
+# Activity 13: Write an r code that visualizes cholesterol
+heart_data %>%
+  ggplot(aes(x=chol)) + 
+           geom_histogram(bins = 30, fill = "yellow", color = "orange", na.rm = TRUE) +
+           ggtitle("Distribution of Cholesterol") +
+           theme(plot.title = element_text(size=15))
+```
+
+
+```{r}
+# Activity 13.1: Write an r code that visualizes gender: (THIS ONE HAS AN ERROR!!)
+heart_data %>%
+  ggplot(aes(x=sex)) + 
+           geom_histogram(bins = 30, fill = "yellow", color = "orange", na.rm = TRUE) +
+           ggtitle("Histogram with bin size = 5") +
+           theme(plot.title = element_text(size=15))
+```
+
+
+```{r}
+# Activity 14: Write an r code that visualizes N of Maximum Heart Rate
+heart_data %>%
+  ggplot(aes(x=thalach)) + 
+  geom_histogram(binwidth = 5, fill = "pink", color = "black", alpha = 0.9, na.rm = TRUE) +
+  ggtitle("Distribution of Maximum Heart Rate Achieved") + 
+  xlab('Max Heart Rate') +
+  ylab('Frequency') +
+  theme(plot.title = element_text(size=15))
+```
+
+
+```{r}
+# Extra Activity [1]: Aggregate the data to store as a variable
+gender_dist <- heart_data %>%
+  count(sex)
+
+gender_dist
+```
+
+```{r}
+# Extra Activity [1]: Errors without specifying stat = identify
+gender_dist %>%
+  ggplot(aes(x=sex, y=n)) + 
+  geom_bar(stat ="identity") + 
+  ggtitle("Distribution of Gender")
+```
+
+
+```{r}
+# Extra Activity [1]: New format for the data
+gender_dist %>%
+  ggplot(aes(x=sex, y=n)) + 
+  geom_bar(stat ="identity", color="black", fill="blue") + 
+  xlab('Gender') +
+  ylab('Frequency')+
+  ggtitle("Distribution of Gender") +
+  # hjust positions of the title
+  theme(plot.title = element_text(color="blue", size=20, face="bold.italic", hjust=0.5))
+```
+
+
+```{r}
+# Store as a variable
+gender_dist <- heart_data %>%
+  count(sex)
+
+gender_dist
+```
+
+
+
+```{r}
+# Extra Activity [2]: Count the number of patients with heart disease
+# This did not need aggregation: Can also format and simplify the code from bar chart
+
+heart_data %>%
+  ggplot(aes(x=sex))+
+  geom_bar(colour="black", fill="blue") + 
+  xlab('Gender') + 
+  ylab('Frequency') + 
+  ggtitle("Distribution of Gender")
+
+# theme(plot.title = element_text(colour="blue", size =20, face="bold.italic", hjust=0.5))
+```
+
+
+```{r}
+# Count the number of patients with Heart Disease
+heart_dist <- heart_data %>%
+  count(target)
+
+heart_dist
+```
+
+
+```{r}
+# This is a short version
+heart_dist %>%
+  ggplot(aes(x=target, y=n))+
+  geom_bar(stat="identity", colour="black", fill="blue") + 
+  xlab('Heart Disease') + 
+  ylab('Frequency') + 
+  ggtitle("Distribution of Heart Disease")
+# theme(plot.title = element_text(color="blue", size=20, face="bold.italic", hjust=0.5))
+```
+
+
+
+```{r}
+# Extra Activity [2]: How to reorder data
+cp_dist <- heart_data %>%
+  count(cp)
+
+cp_dist %>%
+  ggplot(aes(x=reorder(cp, -n), y=n)) + 
+  geom_bar(stat = "identity", color = "black", fill ="pink") +
+  xlab("Heart Disease") + 
+  ylab("Frequency") + 
+  ggtitle("Distribution of Chest Pain Type")
+```
+

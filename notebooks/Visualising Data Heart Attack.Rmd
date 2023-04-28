@@ -1,0 +1,249 @@
+---
+title: "Visualising Heart Attack Data"
+# Sabrina's R Notebook for Intr. to Data Visualisation Class Lecture 5 <3
+---
+
+```{r}
+# read the csv file and save as a variable called heart_data
+# setwd("/Users/shaq/Documents/bu/intro-to-programming/notebooks")
+
+heart_data <- read.csv("../data/heart_attack_data.csv")
+```
+
+
+```{r}
+# the head function previews the data
+head(heart_data)
+```
+
+
+```{r}
+# to check the shape of the data (number of rows and columns)
+# each row of data represents a patient
+dim(heart_data)
+```
+
+
+```{r}
+# to check the structure of the data (different data type of the DataFrame), execute the following code: str(heart_data)
+# integers and numbers are numerical data type
+# we are now able to view the data types and factorize certain variables for analysis
+str(heart_data)
+```
+
+
+```{r}
+# use factor to convert variables with categories to variables with factr data type
+
+heart_data$sex <- factor(heart_data$sex)
+heart_data$cp <- factor(heart_data$cp)
+heart_data$fbs <- factor(heart_data$fbs)
+heart_data$restecg <- factor(heart_data$restecg)
+heart_data$exang <- factor(heart_data$exang)
+heart_data$target <- factor(heart_data$target)
+```
+
+
+```{r}
+# check the new structure after variables have been categorised
+
+str(heart_data)
+```
+
+
+```{r}
+# activate tidyverse, if you have already installed it
+library(tidyverse)
+```
+
+
+```{r}
+# Visualizing Data in R - The syntax
+
+# name_of_data_frame %>%
+#  ggplot(mapping = aes([MAPPING)]) + [GEOM_FUNCTION]()
+
+# To create a line graph with ggplot() + geom_line()
+# To create a scatter plot, ggplot() + geom_point()
+# To create a histogram, we use ggplot() + geom_histogram()
+# To create a bar chart, we use ggplot() + geom_bar()
+# To create a boxplot, we use ggplot() + geom_boxplot()
+
+```
+
+
+```{r}
+# start by defining the x and y axis
+# look at the relationship between age and cholesterol
+heart_data %>%
+  ggplot(aes(x = age, y = chol))
+```
+
+
+```{r}
+# to remove the "warning" label, add "na.rm = TRUE" in geom_point()
+# na.rm represents remove the missing values from the input vector
+heart_data %>%
+  ggplot(aes (x = age, y = chol)) + geom_point(na.rm = TRUE)
+```
+
+
+```{r}
+# Here is the code to address sex in the ggplot
+# You had an error -  the final ")" belongs after the "na.rm" as it belongs to the geom_point f(x)
+# 1 represents male
+# O represents female
+heart_data %>%
+  ggplot(aes (x = age, y = chol)) + 
+  geom_point(aes (colour = sex), na.rm = TRUE)
+```
+
+
+```{r}
+# Now add the title as "Age vs Cholesterol by Gender
+heart_data %>%
+  ggplot(aes (x = age, y = chol)) + 
+  geom_point(aes (colour = sex), na.rm = TRUE) + 
+  ggtitle("Age vs Cholesterol by Gender")
+# Now a question: Can we draw any patterns about the relationship between cholesterol, age and gender?
+```
+
+
+```{r}
+# If you want to replace the 0 and 1 with female and male
+# Convert the 0s to map female and 1s to map male
+heart_data <- heart_data %>%
+  mutate(sex = ifelse(sex == 0, "Female", "Male"))
+
+unique(heart_data$sex)
+```
+
+
+```{r}
+# Now code with the differences
+heart_data %>%
+  ggplot(aes (x = age, y = chol)) + 
+  geom_point(aes (colour = sex), na.rm = TRUE) + 
+  ggtitle("Age vs Cholesterol by Gender")
+```
+
+
+```{r}
+# Activity: Visualize the relationship between age, cholesterol and heart disease (target)
+heart_data %>%
+  ggplot(aes (x = age, y = chol)) + 
+  geom_point(aes (colour = target), na.rm = TRUE) + 
+  ggtitle("Age vs Cholesterol by Gender")
+```
+
+
+```{r}
+# Activity: Now change the target label to Heart Disease and No Heart Disease
+heart_data <- heart_data %>%
+  mutate(target = ifelse(target == 0, "No Heart Disease", "Heart Disease"))
+
+unique(heart_data$target)
+```
+
+
+```{r}
+# Activity: Now check the changes
+heart_data %>%
+  ggplot(aes (x = age, y = chol)) + 
+  geom_point(aes (colour = target), na.rm = TRUE) + 
+  ggtitle("Age vs Cholesterol by Heart Disease")
+
+# Ask her a question - order of the Female, Male
+```
+
+
+```{r}
+# NOTE: If your data starts looking strange, run the factorising code again!! 
+# You'll have to rerun all your codes to make it look decent or fix any problems!!
+```
+
+
+```{r}
+# plot a histogram showing the distribution of age
+heart_data %>%
+  ggplot(aes(x=age)) + 
+  geom_histogram()
+```
+
+
+```{r}
+# adjust the colours of the histogram
+
+heart_data %>%
+  ggplot(aes(x=age)) + 
+           geom_histogram(binwidth = 5, fill = "blue", color = "pink", alpha = 0.9) +
+           ggtitle("Histogram with bin size = 5") +
+           theme(plot.title = element_text(size=15))
+```
+
+
+```{r}
+# Extended Activities: Creating a scatter plot of two variables
+ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width)) + geom_point()
+```
+
+
+```{r}
+# Extended Activities: Creating a bar plot of categorical variable
+ggplot(data = heart_data, aes(x = age)) + geom_bar()
+```
+
+
+```{r}
+# Extended Activities: Changing font family
+ggplot(data = heart_data, aes(x = age, y = chol)) +
+  geom_point(na.rm = TRUE) +
+  theme(text = element_text(family = "Times"))
+```
+
+
+```{r}
+# Extended Activities: Changing font size
+ggplot(data = heart_data, aes(x = age, y = chol)) +
+  geom_point(na.rm = TRUE) +
+  theme(text = element_text(size = 20))
+```
+
+
+```{r}
+# Extended Activities: Why does this code not work?
+ggplot(data = heart_data, aes(x = chol, y = gender)) +
+  geom_point(na.rm = TRUE) +
+  theme(text = element_text(weight = "bold"))
+
+# Because the y-axis of the plot is mapped to the "gender" variable, which is a categorical variable, while the x-axis is mapped to the "chol" variable, which is a continuous variable. This means that the points will be plotted along the y-axis at discrete values for "gender", which might not be what you intended.
+
+# If you want to plot a categorical variable against a continuous variable, you might consider using a box plot or violin plot instead of a scatter plot. Alternatively, you could use a different categorical variable to map to the y-axis, such as "age" or "thal".
+
+# Aside from this issue, the code is setting the font weight to "bold" for all text elements, which might not be necessary or desirable. You can adjust other aspects of the theme, such as font family and font size, using the "theme" function in ggplot2.
+```
+
+
+```{r}
+# Extended Activities: Changing color of points
+ggplot(data = heart_data, aes(x = age, y = chol, color = sex)) +
+  geom_point(na.rm = TRUE)
+
+```
+
+
+```{r}
+# Extended Activities: Changing colour of lines
+ggplot(data = heart_data, aes(x = sex, y = age)) + geom_line(color = "red")
+```
+
+
+```{r}
+# Extended Activities: Setting an overall theme
+ggplot(data = heart_data, aes(x = sex, y = age, color = target)) +
+  geom_point(na.rm = TRUE) +
+  theme_minimal()
+```
+
+
+
