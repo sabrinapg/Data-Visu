@@ -1,0 +1,123 @@
+---
+title: "Using SQL to Query Data"
+# Sabrina's R Notebook for Intr. to Data Visualisation Class Lecture 7 <3
+---
+
+
+```{r}
+# Set up
+install.packages("DBI")
+install.packages("RSQLite")
+```
+
+
+```{r}
+# Connecting to a database that we have currently stored in our data folder
+library(DBI)
+library(RSQLite)
+
+filename <- "../data/prod_sample.db"
+my_connection <- dbConnect(RSQLite::SQLite(), dbname = filename)
+my_connection
+
+```
+
+```{r}
+## Check what tables exist in this database
+dbListTables(my_connection)
+# we have two tables that exist in our database
+```
+
+
+```{sql connection=my_connection}
+/* Activity 3: sql query to view the first ten rows of the online_retail_history table - be sure to pass in the connecrion */
+select *
+from online_retail_history
+limit 10
+```
+
+
+```{sql connection=my_connection}
+/* Activity 4: write a sql query to view the first five rows of the stock_description table - be sure to pass in the connection */
+select *
+from stock_description
+limit 5
+```
+
+
+```{r}
+# Syntax
+# Count()
+# Sum()
+# Avg()
+# Min()
+# Max()
+```
+
+
+```{sql connection=my_connection}
+/* Activity 5: write a sql query to count how many rows the online_retail_history table contains */
+select count(*) as number_rows
+from online_retail_history
+```
+
+
+```{sql connection=my_connection}
+/* Activity 6: write a sql query to count the number of rows of the stock_description table */
+select count(*) as number_rows
+from stock_description
+```
+
+
+```{sql connection=my_connection}
+/* Activity 7: write a sql query to calculate the number of items sold */
+select sum(quantity) as total_quantity
+from online_retail_history
+
+/*5 million items sold*/
+```
+
+
+```{sql connection=my_connection}
+/* Activity 8: write a sql query to calculate the average price of products sold */
+select avg(Price) as avg_price
+from online_retail_history
+
+/*average price of item is 4.6 pounds*/
+```
+
+
+```{sql connection=my_connection}
+/* Activity 9: write a sql query to calculate the minimum price of products sold */
+select min(Price) as min_price
+from online_retail_history
+
+```
+
+
+```{sql connection=my_connection}
+/* Activity 10: write a sql query to calculate the maximum price of products sold */
+select max(Price) as max_price
+from online_retail_history
+```
+
+
+```{sql connection=my_connection}
+/* Activity 11: write a sql query to calculate the min, max, avg price of products sold */
+select min(Price),
+      max(Price), 
+      avg(Price)
+from online_retail_history
+```
+
+
+```{sql connection=my_connection}
+select count(distinct Customer ID) as number_unique_customers
+from online_retail_history
+```
+
+
+```{sql connection=my_connection}
+dbDisconnect(my_connection)
+```
+
