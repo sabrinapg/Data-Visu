@@ -1,0 +1,885 @@
+---
+title: "Tomato Project"
+output: html_notebook
+# Created by: Dalia Duwederi, Defne Gulersen, Deniz Ketboga, Evelyn Lietz, Sabrina Pengiran
+---
+
+Table of Contents:
+
+[1] Setting Up
+
+Individual Data
+[2] Analyzing/Transforming Data
+[3] Analyzing/Transforming Data Summary
+
+All Three Tables Combined - Best Film, Worst Film, Best Genre and Worst Genre
+[4] Analyzing/Transforming Data
+
+Other Findings
+[5] Analyzing/Transforming Data Summary
+[6] Visualizing Data
+
+
+```{r}
+# [1] If not installed, please install these packages
+install.packages("DBI")
+install.packages("RSQLite")
+
+install.packages("extrafont")
+install.packages("RODBC")
+install.packages("sqldf")
+```
+
+
+```{r}
+# [1] Set working directory
+setwd("~/intro-to-programming/notebooks")
+```
+
+
+```{r}
+# [1] Create a connection to the database "exam_database.db" in our data folder 
+library(DBI)
+library(RSQLite)
+library(tidyverse)
+
+library(RODBC)
+library(sqldf)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+
+filename <- "../data/exam_database.db"
+my_connection <- dbConnect(RSQLite::SQLite(),
+                           dbname = filename)
+my_connection
+```
+
+
+```{r}
+# [2] Check what tables exist in exam_database.db
+dbListTables(my_connection)
+```
+
+
+```{r}
+# [2] Analyzing the data: View entire database in each table
+con <- dbConnect(RSQLite::SQLite(), "../data/exam_database.db")
+film_data <- dbGetQuery(con, "select * from films")
+tomato_data <- dbGetQuery(con, "select * from rotten_tomatoes_scores")
+imdb_data <- dbGetQuery(con, "select * from imdb_scores")
+# Reference: https://rsqlite.r-dbi.org/reference/sqlite
+```
+
+
+```{r}
+# [2] Analyzing the data: Combining all the data into a "master_data"
+query <- "
+select f.film_id, f.film_name, f.genre, f.time_period, f.release_year, 
+      r.audience_score, r.critic_score, 
+      i.score, i.likes
+FROM films AS f
+JOIN rotten_tomatoes_scores AS r ON f.film_id = r.film_id
+JOIN imdb_scores AS i ON f.film_id = i.film_id
+"
+master_data <- dbGetQuery(con, query)
+print(master_data)
+```
+
+
+```{r}
+# [2] Analyzing the data: Viewing the database as a "master_data" with all the three tables combined, in R
+summary(master_data)
+```
+
+
+```{r}
+# [2] Analyzing the data: Viewing how many rows and columns exist
+dim(master_data)
+```
+
+
+```{r}
+# [2] Analyzing the data: Viewing the data  and its types 
+str(master_data)
+```
+
+
+```{sql connection=my_connection}
+/* [2] Analyzing the data: View limited database in each table [IMDB] */
+select *
+from imdb_scores
+limit 2
+```
+
+
+```{sql connection=my_connection}
+/* [2] Analyzing the data: Confirming the data is between 1970 and 2017 for release_year [ALL] */
+select count(*) as "Number of Films"
+from films
+join imdb_scores using (film_id)
+join rotten_tomatoes_scores using (film_id)
+where release_year not between 1970 and 2017
+order by audience_score desc;
+```
+
+
+```{sql connection=my_connection}
+/* [2] Analyzing the data: Confirming the data is between 1970 and 2017 for time_period [ALL] */
+select count(*) as "Number of Films"
+from films
+join imdb_scores using (film_id)
+join rotten_tomatoes_scores using (film_id)
+where time_period not between 1970 and 2017
+order by audience_score desc;
+```
+
+
+```{r}
+# [2] Transforming the data: Turning genre(s) into genre
+names(film_data)
+names(film_data)[names(film_data) == "genre(s)"] <- "genre"
+# Reference: https://stackoverflow.com/questions/70297368/r-renaming-multiple-variables, https://bookdown.org/rwnahhas/IntroToR/rename.html, & Professor Koc's Welcome Package HTML
+```
+
+
+```{r}
+# [2] Analyzing the data: Finding all genre names 
+# Note: When this code runs, it reverts any transformation made on genre(s)
+film_data <- dbGetQuery(con, "SELECT * FROM films")
+genre_list <- strsplit(film_data$genre, ",")
+genre_names <- unique(unlist(genre_list))
+print(genre_names)
+# Reference: ChatGPT
+```
+
+
+```{r}
+# [2] Transforming the data: Separating the commas in genre and splitting it into individual rows
+film_data <- film_data %>%
+  separate_rows(genre, sep = ",") %>%
+  mutate(genre = trimws(genre))
+
+# Explanation: "If a variable contains observations with multiple delimited values, separate_rows() separates the values and places each one in its own row" and in order to connect multiple operations - a pipe operator is needed %>%. In order to permanently remove any white-space mutate + trimws() was used.
+# Reference: ChatGPT, https://tidyr.tidyverse.org/reference/separate_rows.html
+```
+
+
+```{r}
+# [2] Analyzing the data: Viewing the instances each genre object was mentioned
+genre_counts <- table(film_data$genre)
+genre_counts_filtered <- genre_counts[names(genre_counts) %in% genre_names]
+print(genre_counts_filtered)
+
+# Explanation: The table() counts the number of frequency. genre_counts_filtered is a secondary subset of genre_counts and using names() it retrieves every single unique name under the value we created 'genre_names' connected by %in%. 
+# Reference: ChatGPT
+```
+
+
+
+
+```{r}
+# [2] Analyzing the data: Run this code to revert the separated genre rows
+
+# film_data <- dbGetQuery(con, "SELECT * FROM films")
+# genre_list <- strsplit(film_data$genre, ",")
+# genre_names <- unique(unlist(genre_list))
+# print(genre_names)
+
+```
+
+
+
+
+```{sql connection=my_connection} 
+/* [2] Analyzing the data: Finding Missing Values [F] */
+select 
+  sum(film_id is null) as "NULL Film ID",
+  sum(film_name is null) as "NULL Film Name",
+  sum(case when genre is null or genre = '' then 1 else 0 end) as "NULL Genre",
+  sum(time_period is null) as "NULL Time Period",
+  sum(release_year is null) as "NULL Release Year"
+from films
+``` 
+
+
+```{sql connection=my_connection}
+/* [2] Analyzing the data: Finding Missing Values [RTS] */
+select 
+  sum(film_id is null) as "NULL Film ID",
+  sum(audience_score is null) as "NULL Audience Score",
+  sum(critic_score is null) as "NULL Critic Score"
+from rotten_tomatoes_scores
+```
+
+
+```{sql connection=my_connection}
+/* [2] Analyzing the data: Finding Missing Values [IMDB] */
+select 
+  sum(film_id is null) as "NULL Film ID",
+  sum(score is null) as "NULL IMDB Score",
+  sum(likes is null) as "NULL Likes"
+from imdb_scores
+```
+
+
+```{sql connection=my_connection}
+/* [2] Analyzing the data: Finding Missing Values -- using count(*) [IMDB] */
+select count(*) as "Missing Likes in IMDB"
+from imdb_scores
+where likes is null;
+```
+
+
+
+
+```{sql connection=my_connection}
+/* [3] Analyzing/Transforming the data 
+
+
+[F] The data set only contains year 1970 to 2017 in both release_year and time_period
+[F] genre(s) can't be used in code so it was transformed and mutated
+[F] genre(s) has multiple descriptive values in a single cell
+[F] There are 22 genre characters
+[ALL] film_id is repetitive in all tables
+[IMDB] Contains NULL data
+
+
+    */
+```
+
+
+
+
+```{sql connection=my_connection}
+/* [4] An SQL that joins all the three tables together */
+SELECT genre_cleaned, AVG(total_score) AS avg_total_score
+FROM (
+    SELECT f.*,
+           imdb.score AS imdb_scores,
+           imdb.likes AS imdb_likes,
+           rt.audience_score AS rt_audience_score,
+           rt.critic_score AS rt_critic_score,
+           imdb.score + rt.audience_score + rt.critic_score AS total_score,
+           CASE
+               WHEN f.genre LIKE '%Drama%' THEN 'Drama'
+               WHEN f.genre LIKE '%Music%' THEN 'Music'
+               WHEN f.genre LIKE '%Romance%' THEN 'Romance'
+               WHEN f.genre LIKE '%Comedy%' THEN 'Comedy'
+               WHEN f.genre LIKE '%Family%' THEN 'Family'
+               WHEN f.genre LIKE '%Fantasy%' THEN 'Fantasy'
+               WHEN f.genre LIKE '%Horror%' THEN 'Horror'
+               WHEN f.genre LIKE '%Mystery%' THEN 'Mystery'
+               WHEN f.genre LIKE '%Adventure%' THEN 'Adventure'
+               WHEN f.genre LIKE '%Crime%' THEN 'Crime'
+               WHEN f.genre LIKE '%Action%' THEN 'Action'
+               WHEN f.genre LIKE '%Thriller%' THEN 'Thriller'
+               WHEN f.genre LIKE '%Biography%' THEN 'Biography'
+               WHEN f.genre LIKE '%History%' THEN 'History'
+               WHEN f.genre LIKE '%War%' THEN 'War'
+               WHEN f.genre LIKE '%Sci-Fi%' THEN 'Sci-Fi'
+               WHEN f.genre LIKE '%Sport%' THEN 'Sport'
+               WHEN f.genre LIKE '%Animation%' THEN 'Animation'
+               WHEN f.genre LIKE '%Musical%' THEN 'Musical'
+               WHEN f.genre LIKE '%Documentary%' THEN 'Documentary'
+               WHEN f.genre LIKE '%Western%' THEN 'Western'
+               WHEN f.genre LIKE '%News%' THEN 'News'
+               ELSE 'Other'
+           END AS genre_cleaned
+    FROM films AS f
+    JOIN imdb_scores AS imdb ON f.film_id = imdb.film_id
+    JOIN rotten_tomatoes_scores AS rt ON f.film_id = rt.film_id
+) AS subquery
+GROUP BY genre_cleaned
+ORDER BY avg_total_score
+LIMIT 1;
+```
+
+
+```{sql connection=my_connection}
+/* [4] An SQL that joins all the three tables together and views the films and their total scores */
+select film_name,
+       total_score
+from (
+select f.*,
+       imdb.score as imdb_scores,
+       imdb.likes as imdb_likes,
+       rt.audience_score as rt_audience_score,
+       rt.critic_score as rt_critic_score,
+      imdb.score  + rt.audience_score + rt.critic_score as total_score
+from films as f
+join imdb_scores as imdb on f.film_id = imdb.film_id
+join rotten_tomatoes_scores as rt on f.film_id = rt.film_id)
+group by film_name
+order by 2 desc
+limit 10
+;
+```
+
+
+```{sql connection=my_connection}
+/* [4] An SQL that joins all the three tables together, without repetition */
+select *
+from films
+join imdb_scores using (film_id)
+join rotten_tomatoes_scores using (film_id)
+limit 3;
+/* Reference: https://www.geeksforgeeks.org/sql-using-clause/ */
+```
+
+
+```{sql connection=my_connection} 
+/* [4] Joined table critics = 100 and ranked by audience - Best Film 1*/
+select *
+from films
+join imdb_scores using (film_id)
+join rotten_tomatoes_scores using (film_id)
+where likes is not null
+and critic_score = 100
+order by audience_score desc
+limit 3;
+```
+
+
+```{sql connection=my_connection} 
+/* [4] Joined table where audience > 90, critics = 100 and ranked by IMDB likes - Best Film 2*/
+select *
+from films
+join imdb_scores using (film_id)
+join rotten_tomatoes_scores using (film_id)
+where audience_score between 90 and 100
+and critic_score = 100
+order by likes desc
+limit 3;
+/* Reference: https://www.sqltutorial.org/sql-between/ */
+```
+
+
+```{sql connection=my_connection}
+/* [4] Joined table where audience > 90, critics = 100 and ranked by IMDB scores - Best Film 3 */
+select *
+from films
+join imdb_scores using (film_id)
+join rotten_tomatoes_scores using (film_id)
+where audience_score between 90 and 100
+and critic_score = 100
+order by score desc
+limit 3;
+```
+
+
+```{sql connection=my_connection}
+/* [4] Joined table and ranked by IMDB likes - Best Film 4 */
+select *
+from films
+join imdb_scores using (film_id)
+join rotten_tomatoes_scores using (film_id)
+order by likes desc
+limit 3;
+```
+
+
+```{sql connection=my_connection}
+/* [4] Joined table where films are ranked by best IMDB scores - Best Film 5*/
+select *
+from films
+join imdb_scores using (film_id)
+join rotten_tomatoes_scores using (film_id)
+order by score desc
+limit 3;
+```
+
+
+```{sql connection=my_connection}
+/* [4] An SQL query that sorts the best movies rated by audience
+ignores films where IMDB likes = null (results are same without this condition), 
+and only finds scores between 90 and 100 - Best Film 6 */
+select *
+from films
+join imdb_scores using (film_id)
+join rotten_tomatoes_scores using (film_id)
+where score between 90 and 100
+and critic_score between 90 and 100
+and audience_score between 90 and 100
+and likes is not null
+order by audience_score desc
+```
+
+
+```{sql connection=my_connection}
+/* [4] An SQL query that sorts the best movies rated by critics
+ignores films where IMDB likes = null (results are same without this condition), 
+and only finds scores between 90 and 100 - Best Film 7 */
+select *
+from films
+join imdb_scores using (film_id)
+join rotten_tomatoes_scores using (film_id)
+where score between 90 and 100
+and critic_score between 90 and 100
+and audience_score between 90 and 100
+and likes is not null
+order by critic_score desc
+```
+
+
+```{r}
+# [4] Finding the best film using "master_data" using best IMDB Scores
+best_film <- master_data$film_name[which.max(master_data$score)]
+print(best_film)
+```
+
+
+```{r}
+# [4] Finding the best film using "master_data" using best IMDB Likes
+most_liked_film <- master_data$film_name[which.max(master_data$likes)]
+print(most_liked_film)
+```
+
+
+
+
+```{sql connection=my_connection}
+/* [4] Analyzing the data - Summary - Best Film
+
+According to IMDB Likes = Fight Club
+According to IMDB Scores = The ShawShank Redemption
+Satisfying both audience, critics, and imdb scores = "The Dark Knight"
+Satisfying both high audience (>90) and high critic scores (=100); the best movie is "Paris, Texas"
+
+Inconsistencies in rankings
+According to IMDB Likes, "Fight Club" ranks #1 and "The Shawshank Redemption" as #3
+This is in conflict with Audiences ranking "The Shawshank Redemption" as #1
+
+Comment: After further consideration, the condition where "like is not null" would be removed because likes were not consistent in every movie
+    */
+```
+
+
+
+
+```{sql connection=my_connection}
+/* [4] Joined table where audience and critics go up to 20 and ranked lowest by audience  - Worst Film 1 */
+select *
+from films
+join imdb_scores using (film_id)
+join rotten_tomatoes_scores using (film_id)
+where audience_score between 0 and 20
+and critic_score between 0 and 20
+order by audience_score 
+limit 3;
+```
+
+
+```{sql connection=my_connection}
+/* [4] Joined table where audience and critics go up to 20 and ranked lowest by critics  - Worst Film 2 */
+select *
+from films
+join imdb_scores using (film_id)
+join rotten_tomatoes_scores using (film_id)
+where audience_score between 0 and 20
+and critic_score between 0 and 20
+order by critic_score 
+limit 3;
+```
+
+
+```{sql connection=my_connection}
+/* [4] Joined table to find the movie with the least IMDB Scores  - Worst Film 3 */
+select *
+from films
+join imdb_scores using (film_id)
+join rotten_tomatoes_scores using (film_id)
+order by score 
+limit 3;
+```
+
+
+```{sql connection=my_connection}
+/* [4] Joined table to find the movie with the least IMDB Scores  - Worst Film 4 */
+select film_name,
+       total_score
+from (
+select f.*,
+       imdb.score as imdb_scores,
+       imdb.likes as imdb_likes,
+       rt.audience_score as rt_audience_score,
+       rt.critic_score as rt_critic_score,
+      imdb.score  + rt.audience_score + rt.critic_score as total_score
+from films as f
+join imdb_scores as imdb on f.film_id = imdb.film_id
+join rotten_tomatoes_scores as rt on f.film_id = rt.film_id)
+group by film_name
+order by total_score
+limit 10
+;
+```
+
+
+```{r}
+# [4] Finding the worst film using "master_data" using worst IMDB Scores
+worst_film <- master_data$film_name[which.min(master_data$score)]
+print(worst_film)
+```
+
+
+
+
+```{sql connection=my_connection}
+/* [4] Analyzing the data - Summary - Worst Film
+We summarized that the worst film is "Disaster Movie" as we are ignoring IMDB Likes as a rating.
+*/
+```
+
+
+
+
+```{sql connection=my_connection}
+/* [4] Joined table - Best Genre 1*/
+select f.genre, count(i.score) as imdb_score_count
+from films as f
+join imdb_scores as i on f.film_id = i.film_id
+group by f.genre
+order by imdb_score_count desc
+limit 3;
+```
+
+
+```{sql connection=my_connection}
+/* [4] Joined table - Best Genre 2*/
+select f.genre, count(i.likes) as imdb_likes_cnt
+from films as f
+join imdb_scores as i on f.film_id = i.film_id
+group by f.genre
+order by imdb_likes_cnt desc
+limit 3;
+```
+
+
+```{sql connection=my_connection}
+/* [4]Joined table - Best Genre 3*/
+select f.genre, count(rts.audience_score) as rts_audience_score
+from films as f
+join rotten_tomatoes_scores as rts on f.film_id = rts.film_id
+group by f.genre
+order by rts_audience_score desc
+limit 3;
+```
+
+
+```{sql connection=my_connection}
+/* [4] Joined table - Best Genre 4*/
+select f.genre, count(rts.critic_score) as rts_critic_score
+from films as f
+join rotten_tomatoes_scores as rts on f.film_id = rts.film_id
+group by f.genre
+order by rts_critic_score desc
+limit 3;
+```
+
+
+
+
+```{sql connection=my_connection}
+/* [4] Analyzing the data - Summary - Best Genre
+
+As a whole: "Comedy, Romance, Drama" is a well popular genre in films.
+In ln 169, Drama occurs 2463 times in the dataset
+In ln 169, Comedy occurs 1927 times in the dataset
+
+We find that the best genre is "Comedy, Romance, Drama"
+*/
+```
+
+
+
+
+```{sql connection=my_connection}
+/* [4] Joined table - Worst Genre 1*/
+select f.genre, count(i.score) as imdb_score_count
+from films as f
+join imdb_scores as i on f.film_id = i.film_id
+group by f.genre
+order by imdb_score_count
+limit 3;
+```
+
+
+```{sql connection=my_connection}
+/* [4] Joined table - Worst Genre 2*/
+select f.genre, count(i.likes) as imdb_likes_cnt
+from films as f
+join imdb_scores as i on f.film_id = i.film_id
+group by f.genre
+order by imdb_likes_cnt
+limit 3
+```
+
+
+```{sql connection=my_connection}
+/* [4] Joined table - Worst Genre 3*/
+select f.genre, count(rts.audience_score) as rts_audience_score
+from films as f
+join rotten_tomatoes_scores as rts on f.film_id = rts.film_id
+group by f.genre
+order by rts_audience_score
+limit 3
+```
+
+
+```{sql connection=my_connection}
+/* [4] Joined table - Worst Genre 4*/
+select f.genre, count(rts.critic_score) as rts_critic_score
+from films as f
+join rotten_tomatoes_scores as rts on f.film_id = rts.film_id
+group by f.genre
+order by rts_critic_score
+limit 3
+```
+
+
+```{sql connection=my_connection}
+/* [4] Joined table - Worst Genre 5*/
+select f.genre, count(rts.critic_score) as rts_critic_score
+from films as f
+join rotten_tomatoes_scores as rts on f.film_id = rts.film_id
+group by f.genre
+order by rts_critic_score
+limit 3
+```
+
+
+
+
+```{sql connection=my_connection}
+/* [4] Analyzing the data - Summary - Worst Genre
+
+Due to the frequency that this "Action,Adventure,Fantasy,Action,Adventure,Fantasy" occurs, we summarize that it is the worst genre
+*/ 
+```
+
+
+
+
+```{sql connection=my_connection}
+/* [5] Analyse only audience ratings for Drama */ 
+select avg(audience_score) as "Audience Ratings Average"
+from rotten_tomatoes_scores as rt
+join films as f on f.film_id = rt.film_id
+where genre = "Drama";
+```
+
+
+```{sql connection=my_connection}
+/* [5] Analyse mean and median statistics for Drama */ 
+SELECT
+    genre,
+    COUNT(*) AS count_films,
+    AVG(audience_score) AS avg_audience_score,
+    AVG(critic_score) AS avg_critic_score,
+    MEDIAN(audience_score) AS median_audience_score,
+    MEDIAN(critic_score) AS median_critic_score
+FROM films
+JOIN rotten_tomatoes_scores ON films.film_id = rotten_tomatoes_scores.film_id
+WHERE genre = 'Drama'
+GROUP BY genre;
+```
+
+
+```{sql connection=my_connection}
+/* [5] Analyse mode statistics for Drama */ 
+select audience_score, count(*) as cnt
+from rotten_tomatoes_scores as rt
+join films as f on f.film_id = rt.film_id
+where genre = "Drama"
+group by audience_score 
+order by cnt desc
+limit 1;
+```
+
+
+```{sql connection=my_connection}
+/* [5] Analyse mean and median statistics for Comedy */ 
+SELECT
+    genre,
+    COUNT(*) AS count_films,
+    AVG(audience_score) AS avg_audience_score,
+    AVG(critic_score) AS avg_critic_score,
+    MEDIAN(audience_score) AS median_audience_score,
+    MEDIAN(critic_score) AS median_critic_score
+FROM films
+JOIN rotten_tomatoes_scores ON films.film_id = rotten_tomatoes_scores.film_id
+WHERE genre = 'Comedy'
+GROUP BY genre;
+```
+
+
+```{sql connection=my_connection}
+/* [5] Analyse mode statistics for Comedy */ 
+select audience_score, count(*) as cnt
+from rotten_tomatoes_scores as rt
+join films as f on f.film_id = rt.film_id
+where genre = "Comedy"
+group by audience_score 
+order by cnt desc
+limit 1;
+```
+
+
+```{r}
+# [5] How to view average IMDB Scores per genre
+genre_avg_imdb_scores <- aggregate(score ~ genre, data = master_data, FUN = mean)
+print(genre_avg_imdb_scores)
+```
+
+
+```{r}
+# [5] Finding the time period that has the best audience scores
+tp_avg_audscores <- aggregate(audience_score ~ time_period, data = master_data, FUN = mean)
+print(tp_avg_audscores)
+```
+
+
+```{r}
+# [5] Finding the time period that has the best critic scores
+tp_avg_cscores <- aggregate(critic_score ~ time_period, data = master_data, FUN = mean)
+print(tp_avg_cscores)
+```
+
+
+
+```{r}
+# [6] Data Visualization: Genre frequencies 
+genre_counts <- film_data %>% 
+  count(genre) %>% 
+  arrange(desc(n))
+
+ggplot(genre_counts, aes(x = reorder(genre, -n), y = n)) +
+  geom_bar(stat = "identity", fill = "pink") +
+  labs(x = "Genre", y = "Frequency") +
+  ggtitle("Genre Frequencies") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        text = element_text(family = "Times New Roman"))
+```
+
+
+```{r}
+# [6] Data Visualization: Year with the most film releases in this dataset
+film_counts <- aggregate(film_id ~ release_year, data = film_data, FUN = length)
+
+ggplot(film_counts, aes(x = release_year, y = film_id)) +
+  geom_bar(stat = "identity", fill = "#AFEEEE") +
+  labs(x = "Release Year", y = "Number of Films Released") +
+  ggtitle("Years with the Most Films Released") +
+  theme_minimal()
+```
+
+
+```{r}
+# [6] Data Visualization: Most popular time periods
+time_period_counts <- aggregate(film_id ~ time_period, data = film_data, FUN = length)
+
+ggplot(time_period_counts, aes(x = time_period, y = film_id)) +
+  geom_bar(stat = "identity", fill = "#AFEEEE") +
+  labs(x = "Time Periods", y = "Number of Films Released") +
+  ggtitle("Most Popular Time Periods for Films") +
+  theme_minimal()
+# Chatgpt
+```
+
+
+```{sql connection=my_connection}
+/* Years that had the most imdb likes  */ 
+SELECT release_year, SUM(likes) AS total_likes
+FROM imdb_scores i
+JOIN films f ON i.film_id = f.film_id
+GROUP BY release_year
+order by total_likes desc
+```
+
+
+```{r}
+# [6] Data Visualization: Most popular release years
+years_pop <- "
+SELECT release_year, SUM(likes) AS total_likes
+FROM imdb_scores i
+JOIN films f ON i.film_id = f.film_id
+GROUP BY release_year
+ORDER BY total_likes DESC"
+result <- dbGetQuery(con, years_pop)
+
+ggplot(result, aes(x = release_year, y = total_likes)) +
+  geom_bar(stat = "identity", fill = "#ADD8E6") +
+  labs(x = "Release Year", y = "Total Likes") +
+  ggtitle("Years with the Most IMDb Likes") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 12, face = "bold"),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12, face = "bold"),
+        text = element_text(family = "Times New Roman"))
+```
+
+
+```{r}
+# [6] Time Period Films that are most popular based on IMDB likes
+likes_data_tp_imdblikes <- dbGetQuery(con, "SELECT time_period, SUM(likes) AS total_likes
+FROM imdb_scores i
+JOIN films f ON i.film_id = f.film_id
+GROUP BY time_period
+order by total_likes desc
+")
+
+ggplot(likes_data_tp_imdblikes, aes(x = time_period, y = total_likes)) +
+  geom_bar(stat = "identity", fill = "#ADD8E6") +
+  labs(x = "Time Period", y = "Total IMDb Likes") +
+  ggtitle("Time Period Films that are popular based on IMDB Likes") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 12, face = "bold"),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12, face = "bold"),
+        text = element_text(family = "Times New Roman"))
+```
+
+
+```{r}
+# [6] Time Period Films that are most popular based on IMDB scores
+likes_data_tp_imdbscore <- dbGetQuery(con, "SELECT time_period, SUM(score) AS total_score_imdb
+FROM imdb_scores i
+JOIN films f ON i.film_id = f.film_id
+GROUP BY time_period
+ORDER BY total_score_imdb DESC")
+
+ggplot(likes_data_tp_imdbscore, aes(x = time_period, y = total_score_imdb)) +
+  geom_bar(stat = "identity", fill = "#ADD8E6") +
+  labs(x = "Time Period", y = "Total IMDb Likes") +
+  ggtitle("Time Period Films that are popular based on IMDb Scores") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 12, face = "bold"),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12, face = "bold"),
+        text = element_text(family = "Times New Roman"))
+```
+
+
+```{r}
+# [6] Representing the genres with the worst IMDB Scores
+genre_worst_imdbscores <- dbGetQuery(con, "
+  select f.genre, COUNT(*) AS frequency
+  from imdb_scores AS i
+  join films AS f ON i.film_id = f.film_id
+  where i.score < 65
+  group by f.genre
+  order by f.genre desc
+  limit 5
+  ")
+
+ggplot(genre_worst_imdbscores, aes(x = genre, y = frequency)) +
+  geom_bar(stat = "identity", fill = "#87CEEB") +
+  labs(x = "Genre", y = "Frequency") +
+  ggtitle("Genres with IMDB Scores less than 65") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 12, face = "bold"),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12, face = "bold"),
+        text = element_text(family = "Times New Roman"))
+```
+
